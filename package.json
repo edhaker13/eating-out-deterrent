@@ -1,0 +1,33 @@
+{
+  "name": "eating-out-deterrent",
+  "version": "0.0.1",
+  "description": "Starling app to deter eating out as much",
+  "main": "index.js",
+  "scripts": {
+    "dev": "DEBUG=eating-out-deterrent node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edhaker13/eating-out-deterrent.git"
+  },
+  "keywords": [
+    "starlingbank",
+    "starling",
+    "bank",
+    "API",
+    "eating-out",
+    "deterrent"
+  ],
+  "author": "Luis Checa <luis@checa.xyz>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/edhaker13/eating-out-deterrent/issues"
+  },
+  "homepage": "https://github.com/edhaker13/eating-out-deterrent#readme",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "debug": "^4.1.1",
+    "uuid": "^3.3.2"
+  }
+}
