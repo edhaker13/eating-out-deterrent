@@ -25,10 +25,21 @@ const client = axios.create({
 		'Content-Type': 'application/json'
 	}
 });
+function logError(error) {
+	log('Error: %O', error.response || error.request || error.message);
+	return Promise.reject(error);
+}
+client.interceptors.request.use(function (config) {
+	dump('Requesting \'%s\' on \'%s\' with data: %j', config.method, config.url, config.data);
+	return config;
+}, logError);
+client.interceptors.response.use(function (response) {
+	dump('\'%s\' returned %d<%s>:\n%O', response.config.url, response.status, response.statusText, response.data);
+	return response;
+}, logError);
 
 function getAccountAndCategory() {
 	return client.get('/accounts').then(({ data }) => {
-		dump('Accounts: %j', data);
 		const accounts = data.accounts;
 		log('Found %d accounts for this user', accounts.length);
 		const first = accounts[0];
@@ -37,7 +48,7 @@ function getAccountAndCategory() {
 			categoryUid: first.defaultCategory,
 			currency: first.currency
 		};
-		log('Using the first account: %O', payload);
+		log('Using the first account: %o', payload);
 		return payload;
 	});
 }
@@ -57,19 +68,18 @@ function getTransactions(payload) {
 
 function getSavingsGoal(payload) {
 	return client.get(`/account/${payload.accountUid}/savings-goals`).then(({ data }) => {
-		dump('Savings-Goals: %j', data);
 		const savingsGoals = data.savingsGoalList;
 		log('Found %d savings goals', savingsGoals.length);
 		const goal = savingsGoals[0];
-		log('Using the first goal: %O', goal);
-		Object.assign(payload, { savingsGoalUid: goal.savingsGoalUid });
+		const targetGoal = { name: goal.name, savingsGoalUid: goal.savingsGoalUid };
+		log('Using the first goal: %o', targetGoal);
+		Object.assign(payload, targetGoal);
 		return payload;
 	});
 }
 
 function putIntoSavingsGoal(payload) {
 	log('Found %d transactions that match \'%s\', they will be put into the savings goal', payload.transactions.length, config.targetSpendingCategory);
-
 	const batch = payload.transactions.map(transaction => {
 		const transferUid = UUID();
 		const url = `/account/${payload.accountUid}/savings-goals/${payload.savingsGoalUid}/add-money/${transferUid}`;
@@ -77,7 +87,7 @@ function putIntoSavingsGoal(payload) {
 		const data = { amount: transaction.amount };
 		// return client.put(url, data);
 		return new Promise(resolve => {
-			dump('PUT \'%s\': %O', url, data);
+			dump('Requesting \'put\' on \'%s\' with data: %j', url, data);
 			return resolve(data);
 		}).then(r => {
 			log('Transferred to savings goal: %O', r.amount);
@@ -86,13 +96,12 @@ function putIntoSavingsGoal(payload) {
 	});
 
 	return axios.all(batch).then(results => {
-		dump('results: %O', results);
 		const total = results.reduce((accumulator, current) => {
 			accumulator.minorUnits += current.minorUnits;
 			return accumulator;
 		});
-		log('You have spent \'%o\' in \'%s\' since %s!', {currency:total.currency, amount: total.minorUnits / 100.0}, config.targetSpendingCategory, config.feedChangesSince);
+		log('You have spent \'%o\' in \'%s\' since %s!', { currency: total.currency, amount: total.minorUnits / 100.0 }, config.targetSpendingCategory, config.feedChangesSince);
 	});
 }
 
-getAccountAndCategory().then(getSavingsGoal).then(getTransactions).then(putIntoSavingsGoal).catch(log);
+getAccountAndCategory().then(getTransactions).then(getSavingsGoal).then(putIntoSavingsGoal).catch(log);
